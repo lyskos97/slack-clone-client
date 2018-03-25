@@ -1,0 +1,11 @@
+[ignore]
+.*/react-apollo.umd.js.flow
+[include]
+
+[libs]
+
+[lints]
+
+[options]
+
+[strict]
