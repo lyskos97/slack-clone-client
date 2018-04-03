@@ -1,7 +1,9 @@
 /* @flow */
 
 import * as React from 'react';
-import { Container, Header, Input, Button } from 'semantic-ui-react';
+// $FlowFixMe
+import { type RouteComponentProps } from 'react-router-dom';
+import { Container, Header, Input, Button, Message, FormField, Form } from 'semantic-ui-react';
 import gql from 'graphql-tag';
 import { graphql, type MutationFunc, type Mutation } from 'react-apollo';
 
@@ -11,19 +13,34 @@ type Inputs = {
   password: string,
 };
 
+type InputErrors = {
+  usernameError: string,
+  emailError: string,
+  passwordError: string,
+};
+
 type Data = {
   register: {
-    id: number,
-    email: string,
-    username: string,
+    success: boolean,
+    user: {
+      id: number,
+      email: string,
+      username: string,
+    },
+    errors: [
+      {
+        path: string,
+        message: string,
+      },
+    ],
   },
 };
 
 type Props = {
   mutate: MutationFunc<Data, Inputs>,
-};
+} & RouteComponentProps;
 
-type State = Inputs;
+type State = Inputs & InputErrors;
 
 class RegisterForm extends React.Component<Props, State> {
   constructor(props: Props) {
@@ -33,28 +50,34 @@ class RegisterForm extends React.Component<Props, State> {
       username: '',
       email: '',
       password: '',
+      usernameError: '',
+      emailError: '',
+      passwordError: '',
     };
   }
 
   onSubmit = async () => {
     const { email, password, username } = this.state;
-    const { mutate } = this.props;
+    const { mutate, history } = this.props;
 
-    try {
-      await mutate({
-        variables: {
-          username,
-          email,
-          password,
-        },
+    const res = await mutate({ variables: { username, email, password } });
+    const { success, errors } = res.data.register;
+
+    if (success) {
+      history.push('/');
+    } else {
+      const err = {};
+
+      errors.forEach(e => {
+        err[`${e.path}Error`] = e.message;
       });
-    } catch (e) {
-      console.log(e);
-      throw new Error(e);
+
+      this.setState(err);
     }
   };
 
   onFieldChange = (e: Event) => {
+    // $FlowFixMe
     const { name, value } = e.target;
 
     this.setState({
@@ -63,30 +86,49 @@ class RegisterForm extends React.Component<Props, State> {
   };
 
   render() {
-    const { email, username, password } = this.state;
+    const { email, username, password, emailError, passwordError, usernameError } = this.state;
+
+    const errors = [emailError, passwordError, usernameError].filter(err => err);
+    const errorHeader = 'The are some problems with your submission';
 
     return (
       <Container text>
-        <Header>Header</Header>
-        <Input
-          onChange={this.onFieldChange}
-          placeholder="Username"
-          value={username}
-          name="username"
-          fluid
-        />
-        <Input onChange={this.onFieldChange} placeholder="Email" value={email} name="email" fluid />
-        <Input
-          onChange={this.onFieldChange}
-          placeholder="Password"
-          type="password"
-          value={password}
-          name="password"
-          fluid
-        />
-        <Button onClick={this.onSubmit} basic primary>
-          Submit
-        </Button>
+        <Header>Register</Header>
+        {errors.length > 0 && <Message color="red" header={errorHeader} list={errors} />}
+        <Form>
+          <FormField>
+            <Input
+              onChange={this.onFieldChange}
+              placeholder="Username"
+              value={username}
+              name="username"
+              fluid
+            />
+          </FormField>
+
+          <FormField>
+            <Input
+              onChange={this.onFieldChange}
+              placeholder="Email"
+              value={email}
+              name="email"
+              fluid
+            />
+          </FormField>
+          <FormField>
+            <Input
+              onChange={this.onFieldChange}
+              placeholder="Password"
+              type="password"
+              value={password}
+              name="password"
+              fluid
+            />
+          </FormField>
+          <Button onClick={this.onSubmit} basic primary>
+            Submit
+          </Button>
+        </Form>
       </Container>
     );
   }
@@ -95,7 +137,14 @@ class RegisterForm extends React.Component<Props, State> {
 const registerFormMutation: Mutation = gql`
   mutation($username: String!, $email: String!, $password: String!) {
     register(username: $username, email: $email, password: $password) {
-      id
+      success
+      user {
+        id
+      }
+      errors {
+        path
+        message
+      }
     }
   }
 `;
