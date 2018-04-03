@@ -7,10 +7,6 @@ import { graphql, type Query, type QueryResult } from 'react-apollo';
 type Props = { data: QueryResult };
 
 const Home = ({ data: { users, loading, error } }: Props) => {
-  console.log('loading', loading);
-  console.log('error', error);
-  console.log('users', users);
-
   if (loading) return 'Loading...';
   if (error) return error.message;
 
