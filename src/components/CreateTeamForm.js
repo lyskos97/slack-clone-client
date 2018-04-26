@@ -8,14 +8,25 @@ import gql from 'graphql-tag';
 import { graphql, type MutationFunc } from 'react-apollo';
 
 type Inputs = {
-  teamName: string,
+  name: string,
 };
 
 type InputErrors = {
-  teamNameError: string,
+  nameError: string,
 };
 
-type Data = {};
+type Data = {
+  createTeam: {
+    success: true,
+    team: Object, // TODO
+    errors: [
+      {
+        path: string,
+        message: string,
+      },
+    ],
+  },
+};
 
 type Props = {
   mutate: MutationFunc<Data, Inputs>,
@@ -28,28 +39,36 @@ class CreateTeamForm extends React.Component<Props, State> {
     super(props);
 
     this.state = {
-      teamName: '',
-      teamNameError: '',
+      name: '',
+      nameError: '',
     };
   }
 
   onSubmit = async () => {
-    const { teamName } = this.state;
+    const { name } = this.state;
     const { mutate, history } = this.props;
 
-    const res = await mutate({ variables: { teamName } });
-    const { success, errors } = res.data.createTeam;
+    console.log('onSub mutate', mutate);
+    try {
+      const res = await mutate({ variables: { name } });
 
-    if (success) {
-      history.push('/');
-    } else {
-      const err = {};
+      const { success, errors } = res.data.createTeam;
 
-      errors.forEach(e => {
-        err[`${e.path}Error`] = e.message;
-      });
+      console.log('onSubmit success', success);
 
-      this.setState(err);
+      if (success) {
+        history.push('/');
+      } else {
+        const err = {};
+
+        errors.forEach(e => {
+          err[`${e.path}Error`] = e.message;
+        });
+
+        this.setState(err);
+      }
+    } catch (e) {
+      console.log('err', e);
     }
   };
 
@@ -63,9 +82,9 @@ class CreateTeamForm extends React.Component<Props, State> {
   };
 
   render() {
-    const { teamName, teamNameError } = this.state;
+    const { name, nameError } = this.state;
 
-    const errors = [teamNameError].filter(err => err);
+    const errors = [nameError].filter(err => err);
     const errorHeader = 'The are some problems with your submission';
 
     return (
@@ -77,8 +96,8 @@ class CreateTeamForm extends React.Component<Props, State> {
             <Input
               onChange={this.onFieldChange}
               placeholder="Name"
-              value={teamName}
-              name="teamName"
+              value={name}
+              name="name"
               fluid
             />
           </FormField>
@@ -95,6 +114,12 @@ const createTeamFormMutation = gql`
   mutation($name: String!) {
     createTeam(name: $name) {
       success
+      team {
+        name
+        owner {
+          id
+        }
+      }
       errors {
         path
         message
